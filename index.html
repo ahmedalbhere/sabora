@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>السبورة الذكية - لوحة تفاعلية كاملة الشاشة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Cairo', 'Tahoma', system-ui, sans-serif;
+            background: #2c3e50;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+        }
+
+        /* الحاوية الرئيسية القابلة للتحريك */
+        .board-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .scroll-area {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        /* منطقة السبورة */
+        .canvas-container {
+            background: linear-gradient(145deg, #e0e5ec 0%, #f0f4fa 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        canvas {
+            display: block;
+            background-color: #ffffff;
+            cursor: crosshair;
+            touch-action: none;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            width: 95%;
+            height: auto;
+            max-width: 1400px;
+            aspect-ratio: 1200 / 700;
+        }
+
+        /* أيقونة القائمة (ثلاث نقاط) */
+        .menu-icon {
+            position: fixed;
+            top: 25px;
+            right: 25px;
+            width: 55px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            transition: 0.2s;
+            border: 1px solid rgba(255,255,255,0.5);
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e66;
+        }
+
+        .menu-icon:hover {
+            transform: scale(1.05);
+            background: white;
+        }
+
+        /* القائمة الجانبية */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            right: -320px;
+            width: 280px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(20px);
+            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+            transition: right 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            padding: 80px 20px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            border-radius: 30px 0 0 30px;
+        }
+
+        .side-menu.open {
+            right: 0;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(3px);
+            z-index: 1000;
+            display: none;
+        }
+
+        .menu-overlay.active {
+            display: block;
+        }
+
+        /* عناصر القائمة */
+        .menu-section {
+            background: rgba(220, 230, 250, 0.5);
+            border-radius: 28px;
+            padding: 15px;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+
+        .menu-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e66;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-right: 3px solid #6c8fb3;
+            padding-right: 12px;
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+
+        .color-option {
+            aspect-ratio: 1;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .color-option.active {
+            transform: scale(1.1);
+            border: 3px solid #2c3e66;
+            box-shadow: 0 0 0 2px white;
+        }
+
+        .tool-btn {
+            background: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            text-align: center;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 8px;
+            font-family: inherit;
+        }
+
+        .tool-btn.active {
+            background: #6c8fb3;
+            color: white;
+            box-shadow: 0 4px 12px rgba(108, 143, 179, 0.3);
+        }
+
+        .size-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 5px;
+            border-radius: 10px;
+            background: #cbd5e1;
+        }
+
+        .size-value {
+            background: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-weight: bold;
+            min-width: 55px;
+            text-align: center;
+        }
+
+        .clear-btn {
+            background: #ffd966;
+            color: #5a3e0b;
+        }
+
+        /* زر تحريك السبورة للأسفل */
+        .scroll-down-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 55px;
+            height: 55px;
+            background: rgba(108, 143, 179, 0.9);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            transition: 0.2s;
+            border: none;
+            color: white;
+            font-size: 28px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .scroll-down-btn:hover {
+            transform: translateY(3px);
+            background: #4a6f8f;
+        }
+
+        /* التفاحة الفضية */
+        .apple-icon {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 65px;
+            height: 65px;
+            background: rgba(192, 192, 192, 0.55);
+            backdrop-filter: blur(8px);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: 0.2s;
+            z-index: 999;
+            font-family: 'Segoe UI', 'Apple Color Emoji', sans-serif;
+        }
+
+        .apple-icon:hover {
+            transform: scale(1.05);
+            background: rgba(200, 200, 200, 0.7);
+        }
+
+        /* استجابة للشاشات الصغيرة */
+        @media (max-width: 600px) {
+            .side-menu { width: 260px; padding: 70px 15px 20px; }
+            .menu-icon { width: 45px; height: 45px; font-size: 24px; top: 15px; right: 15px; }
+            .scroll-down-btn { width: 48px; height: 48px; font-size: 24px; bottom: 20px; right: 20px; }
+            .apple-icon { width: 55px; height: 55px; font-size: 34px; bottom: 20px; left: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="board-wrapper">
+    <div class="scroll-area" id="scrollArea">
+        <div class="canvas-container">
+            <canvas id="smartBoard" width="1200" height="700" style="width:95%; height:auto; aspect-ratio:1200/700"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- أيقونة القائمة (ثلاث نقاط) -->
+<div class="menu-icon" id="menuIcon">
+    ☰
+</div>
+
+<!-- القائمة الجانبية -->
+<div class="side-menu" id="sideMenu">
+    <div class="menu-section">
+        <div class="menu-title">
+            🎨 أدوات الرسم
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 15px;">
+            <button id="penToolBtn" class="tool-btn active" style="flex:1;">✏️ قلم</button>
+            <button id="eraserToolBtn" class="tool-btn" style="flex:1;">🧽 ممحاة</button>
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <div class="menu-title">
+            🖌️ ألوان القلم
+        </div>
+        <div class="color-palette" id="colorPalette">
+            <div class="color-option" style="background:#000000;" data-color="#000000"></div>
+            <div class="color-option" style="background:#FF3B30;" data-color="#FF3B30"></div>
+            <div class="color-option" style="background:#34C759;" data-color="#34C759"></div>
+            <div class="color-option" style="background:#007AFF;" data-color="#007AFF"></div>
+            <div class="color-option" style="background:#FF9500;" data-color="#FF9500"></div>
+            <div class="color-option" style="background:#AF52DE;" data-color="#AF52DE"></div>
+            <div class="color-option" style="background:#FF2D55;" data-color="#FF2D55"></div>
+            <div class="color-option" style="background:#8B5E3C;" data-color="#8B5E3C"></div>
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <div class="menu-title">
+            📏 حجم الأداة
+        </div>
+        <div class="size-control">
+            <input type="range" id="toolSizeSlider" min="2" max="50" value="5" step="1">
+            <span class="size-value" id="sizeValue">5px</span>
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <button id="clearCanvasBtn" class="tool-btn clear-btn">
+            🗑️ مسح السبورة بالكامل
+        </button>
+    </div>
+</div>
+<div class="menu-overlay" id="menuOverlay"></div>
+
+<!-- زر تحريك السبورة للأسفل -->
+<button class="scroll-down-btn" id="scrollDownBtn">
+    ⬇️
+</button>
+
+<!-- التفاحة الفضية -->
+<div class="apple-icon" id="appleIcon">
+    🍎
+</div>
+
+<script>
+    (function(){
+        // عناصر السبورة
+        const canvas = document.getElementById('smartBoard');
+        const ctx = canvas.getContext('2d');
+        
+        // متغيرات الرسم
+        let drawing = false;
+        let currentColor = '#000000';
+        let currentSize = 5;
+        let isEraser = false;
+        
+        // أدوات الواجهة
+        const penBtn = document.getElementById('penToolBtn');
+        const eraserBtn = document.getElementById('eraserToolBtn');
+        const sizeSlider = document.getElementById('toolSizeSlider');
+        const sizeValueSpan = document.getElementById('sizeValue');
+        const clearBtn = document.getElementById('clearCanvasBtn');
+        const scrollDownBtn = document.getElementById('scrollDownBtn');
+        const scrollArea = document.getElementById('scrollArea');
+        const appleIcon = document.getElementById('appleIcon');
+        
+        // القائمة الجانبية
+        const menuIcon = document.getElementById('menuIcon');
+        const sideMenu = document.getElementById('sideMenu');
+        const menuOverlay = document.getElementById('menuOverlay');
+        
+        // فتح/غلق القائمة
+        function openMenu() {
+            sideMenu.classList.add('open');
+            menuOverlay.classList.add('active');
+        }
+        
+        function closeMenu() {
+            sideMenu.classList.remove('open');
+            menuOverlay.classList.remove('active');
+        }
+        
+        menuIcon.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (sideMenu.classList.contains('open')) {
+                closeMenu();
+            } else {
+                openMenu();
+            }
+        });
+        
+        menuOverlay.addEventListener('click', closeMenu);
+        
+        // تحديد الأداة (قلم أو ممحاة)
+        function setTool(tool) {
+            if (tool === 'pen') {
+                isEraser = false;
+                penBtn.classList.add('active');
+                eraserBtn.classList.remove('active');
+                // تحديث اللون الحالي للقلم (استعادة اللون المختار)
+                const activeColor = document.querySelector('.color-option.active');
+                if (activeColor) {
+                    currentColor = activeColor.getAttribute('data-color');
+                }
+            } else if (tool === 'eraser') {
+                isEraser = true;
+                eraserBtn.classList.add('active');
+                penBtn.classList.remove('active');
+            }
+        }
+        
+        penBtn.addEventListener('click', () => setTool('pen'));
+        eraserBtn.addEventListener('click', () => setTool('eraser'));
+        
+        // التحكم بحجم الأداة
+        sizeSlider.addEventListener('input', (e) => {
+            currentSize = parseInt(e.target.value);
+            sizeValueSpan.innerText = currentSize + 'px';
+        });
+        
+        // ألوان القلم
+        const colorOptions = document.querySelectorAll('.color-option');
+        colorOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                if (!isEraser) {
+                    currentColor = opt.getAttribute('data-color');
+                    colorOptions.forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                } else {
+                    // إذا كانت الممحاة نشطة، ننبه المستخدم أن يختار القلم أولاً
+                    alert('⚠️ اختر أداة القلم أولاً لتغيير اللون');
+                }
+            });
+        });
+        // تحديد الأسود كافتراضي
+        document.querySelector('.color-option[data-color="#000000"]').classList.add('active');
+        
+        // دوال الرسم على السبورة
+        function getCanvasCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX, clientY;
+            if (e.touches) {
+                if (e.touches.length === 0) return null;
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            let x = (clientX - rect.left) * scaleX;
+            let y = (clientY - rect.top) * scaleY;
+            x = Math.min(Math.max(0, x), canvas.width);
+            y = Math.min(Math.max(0, y), canvas.height);
+            return { x, y };
+        }
+        
+        function startDrawing(e) {
+            drawing = true;
+            const coords = getCanvasCoords(e);
+            if (!coords) return;
+            ctx.beginPath();
+            ctx.moveTo(coords.x, coords.y);
+            
+            if (isEraser) {
+                ctx.strokeStyle = '#FFFFFF'; // الممحاة بلون الخلفية
+            } else {
+                ctx.strokeStyle = currentColor;
+            }
+            ctx.lineWidth = currentSize;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+            e.preventDefault();
+        }
+        
+        function draw(e) {
+            if (!drawing) return;
+            const coords = getCanvasCoords(e);
+            if (!coords) return;
+            
+            if (isEraser) {
+                ctx.strokeStyle = '#FFFFFF';
+            } else {
+                ctx.strokeStyle = currentColor;
+            }
+            ctx.lineWidth = currentSize;
+            ctx.lineTo(coords.x, coords.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(coords.x, coords.y);
+            e.preventDefault();
+        }
+        
+        function stopDrawing() {
+            drawing = false;
+            ctx.beginPath();
+        }
+        
+        // أحداث الفأرة واللمس
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+        canvas.addEventListener('touchcancel', stopDrawing);
+        canvas.addEventListener('touchmove', (e) => { if (drawing) e.preventDefault(); }, { passive: false });
+        
+        // مسح السبورة (خلفية بيضاء)
+        function clearBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        clearBtn.addEventListener('click', () => {
+            if (confirm('⚠️ هل أنت متأكد من مسح السبورة بالكامل؟')) {
+                clearBoard();
+            }
+        });
+        
+        // تحريك السبورة إلى الأسفل بسلاسة
+        scrollDownBtn.addEventListener('click', () => {
+            const containerHeight = scrollArea.clientHeight;
+            const scrollHeight = scrollArea.scrollHeight;
+            const currentScroll = scrollArea.scrollTop;
+            
+            // إذا كان في الأسفل تقريباً، ننقله للأعلى، وإلا ننقله للأسفل
+            if (currentScroll + containerHeight >= scrollHeight - 50) {
+                scrollArea.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+                scrollArea.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+            }
+        });
+        
+        // التفاحة الفضية: مسح سريع
+        appleIcon.addEventListener('click', () => {
+            if (confirm('🍎 هل تريد مسح السبورة بالكامل؟')) {
+                clearBoard();
+            }
+        });
+        
+        // تهيئة السبورة
+        function initBoard() {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = currentSize;
+            ctx.strokeStyle = currentColor;
+        }
+        
+        // تحسين الرسم عند تغيير الأداة وللتأكد من لون الممحاة
+        window.addEventListener('load', () => {
+            initBoard();
+            // ضبط السلايدر لعرض الحجم الابتدائي
+            sizeValueSpan.innerText = currentSize + 'px';
+        });
+        
+        // منع إغلاق القائمة عند النقر داخلها
+        sideMenu.addEventListener('click', (e) => e.stopPropagation());
+        
+        // إضافة ميزة كتابة النص (اختياري ومفيد) لكن بدون زر تحميل صور كما طلبت - نضيف أداة نص بسيطة داخل القائمة لتصبح أكمل
+        // بما أن الطلب يشمل سبورة كاملة مع قلم واستيكة، إضافة النص تعزز التجربة دون تحميل صور.
+        const textToolBtn = document.createElement('button');
+        textToolBtn.className = 'tool-btn';
+        textToolBtn.innerHTML = '📝 إدراج نص';
+        textToolBtn.style.marginTop = '10px';
+        textToolBtn.style.background = '#e2e8f0';
+        document.querySelector('.menu-section:last-child').appendChild(textToolBtn);
+        
+        textToolBtn.addEventListener('click', () => {
+            const userText = prompt('✏️ اكتب النص الذي تريد إضافته على السبورة:', 'سبورة ذكية');
+            if (!userText) return;
+            const fontSelect = prompt('اختر نوع الخط:\n1. Cairo\n2. Tahoma\n3. Arial\n4. Courier New\nاكتب الرقم أو الاسم:', 'Cairo');
+            let fontFamily = 'Cairo';
+            if (fontSelect === '2' || fontSelect === 'Tahoma') fontFamily = 'Tahoma';
+            else if (fontSelect === '3' || fontSelect === 'Arial') fontFamily = 'Arial';
+            else if (fontSelect === '4' || fontSelect === 'Courier New') fontFamily = 'Courier New';
+            else fontFamily = 'Cairo';
+            
+            const fontSize = prompt('حجم الخط (بكسل):', '36');
+            const finalSize = parseInt(fontSize) || 36;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            ctx.save();
+            ctx.font = `${finalSize}px "${fontFamily}", "Cairo", Tahoma, sans-serif`;
+            ctx.fillStyle = isEraser ? '#FFFFFF' : currentColor;
+            ctx.shadowBlur = 0;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(userText, centerX, centerY);
+            ctx.restore();
+        });
+        
+        // تحديث لون القلم عند تغيير الأداة من ممحاة لقلم
+        // إضافي: عند الخروج من الممحاة نستعيد اللون المختار سابقاً
+        const observer = new MutationObserver(() => {
+            if (!isEraser) {
+                const activeColorEl = document.querySelector('.color-option.active');
+                if (activeColorEl) currentColor = activeColorEl.getAttribute('data-color');
+            }
+        });
+        observer.observe(document.getElementById('colorPalette'), { attributes: true, subtree: true });
+        
+    })();
+</script>
+</body>
+</html>
